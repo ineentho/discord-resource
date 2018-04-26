@@ -7,7 +7,10 @@ import (
 	"encoding/json"
 
 	"github.com/bwmarrin/discordgo"
-	"time"
+	"path/filepath"
+	"io/ioutil"
+	"text/template"
+	"bytes"
 )
 
 type Datum struct {
@@ -30,6 +33,7 @@ type Source struct {
 
 type Params struct {
 	Channel string `json:"channel,omitempty"`
+	Import  string `json:"import,omitempty"`
 	Title   string `json:"title,omitempty"`
 	Message string `json:"message,omitempty"`
 	Color   int    `json:"color,omitempty"`
@@ -41,6 +45,7 @@ type Payload struct {
 }
 
 func main() {
+	args := os.Args
 	stat, err := os.Stdin.Stat()
 	if err != nil {
 		panic(err)
@@ -71,12 +76,33 @@ func main() {
 	}
 	defer discord.Close()
 
+	var message interface{}
+	file := filepath.Join(args[1], payload.Params.Import)
+	dat, err := ioutil.ReadFile(file)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(dat, &message)
+	if err != nil {
+		panic(err)
+	}
+
+	var messageBuffer bytes.Buffer
+	tmpl, err := template.New("params").Parse(payload.Params.Message)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = tmpl.Execute(&messageBuffer, message.(map[string]interface{})); err != nil {
+		panic(err)
+	}
+
 	embed := &discordgo.MessageEmbed{
 		Author:      &discordgo.MessageEmbedAuthor{},
 		Title:       payload.Params.Title,
-		Description: payload.Params.Message,
+		Description: messageBuffer.String(),
 		Color:       payload.Params.Color,
-		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 
 	_, err = discord.ChannelMessageSendEmbed(payload.Params.Channel, embed)
