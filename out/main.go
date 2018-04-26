@@ -78,14 +78,10 @@ func main() {
 
 	var message interface{}
 	file := filepath.Join(args[1], payload.Params.Import)
-	dat, err := ioutil.ReadFile(file)
-	if err != nil {
-		panic(err)
-	}
-
+	dat, _ := ioutil.ReadFile(file)
 	err = json.Unmarshal(dat, &message)
 	if err != nil {
-		panic(err)
+		json.Unmarshal([]byte("{}"), &message)
 	}
 
 	var messageBuffer bytes.Buffer
@@ -94,7 +90,11 @@ func main() {
 		panic(err)
 	}
 
-	if err = tmpl.Execute(&messageBuffer, message.(map[string]interface{})); err != nil {
+	messageStruct := message.(map[string]interface{})
+	messageStruct["job"] = fmt.Sprintf("%v/%v", os.Getenv("BUILD_PIPELINE_NAME"), os.Getenv("BUILD_JOB_NAME"))
+	messageStruct["build"] = os.Getenv("BUILD_NAME")
+
+	if err = tmpl.Execute(&messageBuffer, messageStruct); err != nil {
 		panic(err)
 	}
 
