@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
 
 	"github.com/bwmarrin/discordgo"
 	"time"
@@ -29,10 +30,12 @@ type Source struct {
 }
 
 type Params struct {
-	Channel string `json:"channel,omitempty"`
-	Title   string `json:"title,omitempty"`
-	Message string `json:"message,omitempty"`
-	Color   int    `json:"color,omitempty"`
+	Channel     string `json:"channel,omitempty"`
+	Title       string `json:"title,omitempty"`
+	TitleFile   string `json:"title_file,omitempty"`
+	Message     string `json:"message,omitempty"`
+	MessageFile string `json:"message_file,omitempty"`
+	Color       int    `json:"color,omitempty"`
 }
 
 type Payload struct {
@@ -59,6 +62,26 @@ func main() {
 	}
 	if err := scanner.Err(); err != nil {
 		panic(err)
+	}
+
+	// Replace Message with the contents of MessageFile
+	if payload.Params.MessageFile != "" {
+		message, err := ioutil.ReadFile(payload.Params.MessageFile)
+		if err != nil {
+			panic(err)
+		}
+
+		payload.Params.Message = string(message)
+	}
+
+	// Replace Title with the contents of TitleFile
+	if payload.Params.TitleFile != "" {
+		title, err := ioutil.ReadFile(payload.Params.TitleFile)
+		if err != nil {
+			panic(err)
+		}
+
+		payload.Params.Title = string(title)
 	}
 
 	discord, err := discordgo.New("Bot " + payload.Source.Token)
